@@ -8,6 +8,8 @@ mod report;
 
 use proc_exit::prelude::*;
 
+use typos_cli::report::Report;
+
 fn main() {
     human_panic::setup_panic!();
     let result = run();
@@ -315,6 +317,11 @@ fn run_checks(args: &args::Args) -> proc_exit::ExitResult {
         }
         if status_reporter.errors_found() {
             errors_found = true;
+        }
+
+        if let Err(err) = status_reporter.generate_final_result() {
+            log::error!("generate final result: {}", err);
+            return proc_exit::Code::FAILURE.ok();
         }
     }
 
