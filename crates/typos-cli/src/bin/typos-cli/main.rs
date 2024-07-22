@@ -320,8 +320,8 @@ fn run_checks(args: &args::Args) -> proc_exit::ExitResult {
         }
 
         if let Err(err) = status_reporter.generate_final_result() {
+            errors_found = true;
             log::error!("generate final result: {}", err);
-            return proc_exit::Code::FAILURE.ok();
         }
     }
 
