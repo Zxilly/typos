@@ -188,6 +188,11 @@ fn run_checks(args: &args::Args) -> proc_exit::ExitResult {
         ),
         None => None,
     };
+    
+    let global_reporter = match args.format {
+        args::Format::Sarif => Some(args.format.reporter()),
+        _ => None,
+    };
 
     // Note: file_list and args.path are mutually exclusive, enforced by clap
     'path: for path in file_list.as_ref().unwrap_or(&args.path) {
@@ -265,13 +270,24 @@ fn run_checks(args: &args::Args) -> proc_exit::ExitResult {
             }
             walk.overrides(overrides);
         }
-
-        // HACK: Diff doesn't handle mixing content
-        let output_reporter = if args.diff {
-            Box::new(report::PrintSilent)
-        } else {
-            args.format.reporter()
+        
+        let get_reporter = || {
+            // HACK: Diff doesn't handle mixing content
+            if args.diff {
+                Box::new(report::PrintSilent)
+            } else {
+                args.format.reporter()
+            }
         };
+        
+        let temp_reporter;
+        let output_reporter = if let Some(reporter) = global_reporter.as_ref() {
+            reporter
+        } else {
+            temp_reporter = get_reporter();
+            &temp_reporter
+        };
+        
         let status_reporter = report::MessageStatus::new(output_reporter.as_ref());
         let reporter: &dyn typos_cli::report::Report = &status_reporter;
 
@@ -318,8 +334,10 @@ fn run_checks(args: &args::Args) -> proc_exit::ExitResult {
         if status_reporter.errors_found() {
             errors_found = true;
         }
-
-        if let Err(err) = status_reporter.generate_final_result() {
+    }
+    
+    if let Some(reporter) = global_reporter {
+        if let Err(err) = reporter.generate_final_result() {
             errors_found = true;
             log::error!("generate final result: {}", err);
         }
