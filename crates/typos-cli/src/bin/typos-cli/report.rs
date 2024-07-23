@@ -330,10 +330,8 @@ impl PrintSarif {
                 };
 
                 let start = String::from_utf8_lossy(&msg.buffer[0..msg.byte_offset]);
-                let column_start =
-                    unicode_segmentation::UnicodeSegmentation::graphemes(start.as_ref(), true).count() + 1;
-                let column_end =
-                    unicode_segmentation::UnicodeSegmentation::graphemes(msg.typo, true).count() + column_start;
+                let column_start = start.encode_utf16().count() + 1;
+                let column_end = msg.typo.encode_utf16().count() + column_start;
                 let line_num = msg.context.as_ref().map(|context| match context {
                     Context::File(context) => context.line_num,
                     _ => 1,
@@ -402,7 +400,7 @@ impl PrintSarif {
         let mut run_builder = sarif::RunBuilder::default();
         run_builder
             .tool(tool)
-            .column_kind(sarif::ResultColumnKind::UnicodeCodePoints.to_string())
+            .column_kind(sarif::ResultColumnKind::Utf16CodeUnits.to_string())
             .results(self.results.lock().unwrap().clone());
 
         if !self.error.lock().unwrap().is_empty() {
